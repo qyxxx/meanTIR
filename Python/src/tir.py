@@ -1,7 +1,16 @@
 import numpy as np
 import pandas as pd
+import sys
 from lifelines import CoxTimeVaryingFitter
 
+# value in range
+def value_in_range(x, range = [-sys.maxsize, sys.maxsize]):
+  if range[0] <= x and x <= range[1]:
+    return 1
+  else:
+    return 0
+
+# naive estimator
 def naive_est(data, min_time = 0, max_time = 1440*7-5,boot = 'NULL', id_col = 'patient_id', time = 'time', value_in_range = 'value_in_range'):
   #calculate TIR within max time selected
   data = data.loc[data[time] <= max_time]
@@ -18,7 +27,8 @@ def naive_est(data, min_time = 0, max_time = 1440*7-5,boot = 'NULL', id_col = 'p
       boot_x[id_col] = boot_x[id_col] + '_'+ boot_x['repeat_id_num']
       boot_TIR.append(naive_est(boot_x, min_time = min_time, max_time = max_time, boot = 'NULL', id_col=id_col, time=time, value_in_range=value_in_range))
     return [TIR, np.std(boot_TIR, ddof=1)]
-  
+
+# proposed estimator with noninformative follow-up duration assumption
 def proposed_est_noninfo(data, min_time = 0, max_time = 1440*7-5, boot = 'NULL', id_col = 'patient_id', time = 'time', value_in_range = 'value_in_range'):
   data = data.loc[data[time] <= max_time]
   data = data.loc[data[time] >= min_time]
@@ -34,6 +44,7 @@ def proposed_est_noninfo(data, min_time = 0, max_time = 1440*7-5, boot = 'NULL',
       boot_TIR.append(proposed_est_noninfo(boot_x, min_time = min_time, max_time = max_time, boot = 'NULL', id_col=id_col, time=time, value_in_range=value_in_range))
     return [TIR, np.std(boot_TIR, ddof=1)]
 
+# proposed estimator with cox model
 def proposed_est_cox(data, min_time = 0, max_time = 1440*7-5, id_col="patient_id", event_col="event", start_col="time", stop_col="time2", formula='var1', boot = 'NULL', value_in_range = 'value_in_range'):
   dat = data
   time = start_col
@@ -65,3 +76,24 @@ def proposed_est_cox(data, min_time = 0, max_time = 1440*7-5, id_col="patient_id
       boot_x[patient_id] = boot_x[patient_id] + '_'+ boot_x['repeat_id_num']
       boot_TIR.append(proposed_est_cox(boot_x, min_time = min_time, max_time = max_time, id_col = id_col, event_col= event_col, start_col=start_col, stop_col=stop_col, formula=formula, boot = 'NULL', value_in_range=value_in_range))
     return [TIR, np.std(boot_TIR, ddof=1)]
+  
+# TIR estimation
+def estTIR(data, method = 'proposed', model = 'NULL', time = [0, 1440*7-5], range = [70, 180], boot = 'NULL', id = 'patient_id', glucose = 'glucose', time_col = 'time', period = 5, formula = 'var1'):
+  # add columns value_in_range
+  data['value_in_range'] = data[glucose].apply(lambda x: value_in_range(x, range = range))
+  # add columns required by time-varying Cox's model
+  data['event'] = False
+  data.loc[data.groupby(id)[time_col].idxmax(), 'event'] = True
+  data['time2'] = data[time_col] + period
+  # return the estimation and the standard deviation
+  match (method, model):
+    case ('naive', 'NULL'):
+      return naive_est(data, min_time = time[0], max_time = time[1], boot = boot, id_col = id, time = time_col, value_in_range = 'value_in_range')
+    case ('proposed', 'NULL'):
+      return proposed_est_noninfo(data, min_time = time[0], max_time = time[1], boot = boot, id_col = id, time = time_col, value_in_range = 'value_in_range')
+    case ('proposed', 'cox'):
+      return proposed_est_cox(data, min_time = time[0], max_time = time[1], id_col = id, event_col= 'event', start_col= time_col, stop_col= 'time2', formula=formula, boot = boot, value_in_range='value_in_range')
+    case _:
+      return 'Error: model not recognized'
+
+
