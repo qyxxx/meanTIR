@@ -18,15 +18,18 @@ def naive_est(data, min_time = 0, max_time = 1440*7-5,boot = 'NULL', id_col = 'p
   #naive method groupby patient id calcualte TIR_i then average
   TIR = (data.groupby(id_col)[value_in_range].mean().reset_index())[value_in_range].mean()
   if not(str(boot).isnumeric()):
-    return TIR
+    return {'est': TIR}
   else:
     boot_TIR = []
     for i in range(boot):
       boot_x = data.merge(pd.DataFrame(np.random.choice(list(data[id_col].unique()), size=len(list(data[id_col].unique())), replace=True), columns = [id_col]))
       boot_x['repeat_id_num'] = boot_x.groupby([id_col, time]).cumcount().add(1).apply(str)
       boot_x[id_col] = boot_x[id_col] + '_'+ boot_x['repeat_id_num']
-      boot_TIR.append(naive_est(boot_x, min_time = min_time, max_time = max_time, boot = 'NULL', id_col=id_col, time=time, value_in_range=value_in_range))
-    return [TIR, np.std(boot_TIR, ddof=1)]
+      boot_TIR.append(naive_est(boot_x, min_time = min_time, max_time = max_time, boot = 'NULL', id_col=id_col, time=time, value_in_range=value_in_range)['est'])
+    return {'est': TIR, 
+            'std err': np.std(boot_TIR, ddof=1), 
+            '[0.025': np.quantile(boot_TIR, 0.025), 
+            '0.975]':np.quantile(boot_TIR, 0.975)}
 
 # proposed estimator with noninformative follow-up duration assumption
 def proposed_est_noninfo(data, min_time = 0, max_time = 1440*7-5, boot = 'NULL', id_col = 'patient_id', time = 'time', value_in_range = 'value_in_range'):
@@ -34,15 +37,15 @@ def proposed_est_noninfo(data, min_time = 0, max_time = 1440*7-5, boot = 'NULL',
   data = data.loc[data[time] >= min_time]
   TIR = (data.groupby(time)[value_in_range].mean().reset_index())[value_in_range].mean()
   if not(str(boot).isnumeric()):
-    return TIR
+    return {'est': TIR}
   else:
     boot_TIR = []
     for i in range(boot):
       boot_x = data.merge(pd.DataFrame(np.random.choice(list(data[id_col].unique()), size=len(list(data[id_col].unique())), replace=True), columns = [id_col]))
       boot_x['repeat_id_num'] = boot_x.groupby([id_col, time]).cumcount().add(1).apply(str)
       boot_x[id_col] = boot_x[id_col] + '_'+ boot_x['repeat_id_num']
-      boot_TIR.append(proposed_est_noninfo(boot_x, min_time = min_time, max_time = max_time, boot = 'NULL', id_col=id_col, time=time, value_in_range=value_in_range))
-    return [TIR, np.std(boot_TIR, ddof=1)]
+      boot_TIR.append(proposed_est_noninfo(boot_x, min_time = min_time, max_time = max_time, boot = 'NULL', id_col=id_col, time=time, value_in_range=value_in_range)['est'])
+    return {'est': TIR, 'std err': np.std(boot_TIR, ddof=1), '[0.025': np.quantile(boot_TIR, 0.025), '0.975]':np.quantile(boot_TIR, 0.975)}
 
 # proposed estimator with cox model
 def proposed_est_cox(data, min_time = 0, max_time = 1440*7-5, id_col="patient_id", event_col="event", start_col="time", stop_col="time2", formula='var1', boot = 'NULL', value_in_range = 'value_in_range'):
@@ -67,15 +70,15 @@ def proposed_est_cox(data, min_time = 0, max_time = 1440*7-5, id_col="patient_id
   TIR = (dat.groupby(time))[[value_in_range, 'weight']].apply(lambda x: np.average(x[value_in_range], weights = x['weight'])).mean()
   #boots or not
   if not(str(boot).isnumeric()):
-    return TIR
+    return {'est': TIR}
   else:
     boot_TIR = []
     for i in range(boot):
       boot_x = data.merge(pd.DataFrame(np.random.choice(list(data[patient_id].unique()), size=len(list(data[patient_id].unique())), replace=True), columns = [patient_id]))
       boot_x['repeat_id_num'] = boot_x.groupby([patient_id, time]).cumcount().add(1).apply(str)
       boot_x[patient_id] = boot_x[patient_id] + '_'+ boot_x['repeat_id_num']
-      boot_TIR.append(proposed_est_cox(boot_x, min_time = min_time, max_time = max_time, id_col = id_col, event_col= event_col, start_col=start_col, stop_col=stop_col, formula=formula, boot = 'NULL', value_in_range=value_in_range))
-    return [TIR, np.std(boot_TIR, ddof=1)]
+      boot_TIR.append(proposed_est_cox(boot_x, min_time = min_time, max_time = max_time, id_col = id_col, event_col= event_col, start_col=start_col, stop_col=stop_col, formula=formula, boot = 'NULL', value_in_range=value_in_range)['est'])
+    return {'est': TIR, 'std err': np.std(boot_TIR, ddof=1), '[0.025': np.quantile(boot_TIR, 0.025), '0.975]':np.quantile(boot_TIR, 0.975)}
   
 # TIR estimation
 def estTIR(data, method = 'proposed', model = 'NULL', time = [0, 1440*7-5], range = [70, 180], boot = 'NULL', id = 'patient_id', glucose = 'glucose', time_col = 'time', period = 5, formula = 'var1'):
@@ -96,4 +99,15 @@ def estTIR(data, method = 'proposed', model = 'NULL', time = [0, 1440*7-5], rang
     case _:
       return 'Error: model not recognized'
 
+def round_nested(data, decimals=3):
+    if isinstance(data, dict):
+        return {k: round_nested(v, decimals) for k, v in data.items()}
+    elif isinstance(data, (list, tuple)):
+        return type(data)(round_nested(x, decimals) for x in data)
+    elif isinstance(data, (int, float)):
+        return round(data, decimals)
+    return data
 
+def printTIR(est, decimals=3):
+    DF = pd.DataFrame(round_nested(est, decimals), index=['TIR'])
+    return print(DF)
