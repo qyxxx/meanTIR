@@ -12,11 +12,13 @@ here::i_am('example.qmd')
 data <- read.csv(file = '../data/dataSample.csv')
 ```
 
+
 ## debug
 ```{r}
-estTIR(data, method = "naive", time = c(0, 4200), range = c(70, 180))
+estTIR(data, method = "naive", time = c(0, 4200), range = c(70, 180), boot = 20)
 ```
+
 ```{r}
-estTIR(data, method = "proposed", time = c(0, 4200), range = c(70, 180))
+estTIR(data, method = "proposed", time = c(0, 4200), range = c(70, 180), boot = 20)
 ```
 

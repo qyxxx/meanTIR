@@ -17,20 +17,28 @@ value_in_range <- function(x, range = c(-.Machine$integer.max, .Machine$integer.
 naive_est <- function(data, min_time = 0, max_time = (1440 * 7 - 5), boot = NULL, id_col = "patient_id", time = "time", value_in_range = "value_in_range") {
   data <- data[data[[time]] <= max_time & data[[time]] >= min_time, ]
   TIR <- data|>
-    group_by_at(id_col) |>
-    summarise(TIR_i = mean(value_in_range, na.rm = TRUE)) |>
-    summarise(TIR = mean(TIR_i)) |>
-    pull(TIR)
+    dplyr::group_by_at(id_col) |>
+    dplyr::summarise(TIR_i = mean(value_in_range, na.rm = TRUE)) |>
+    dplyr::summarise(TIR = mean(TIR_i)) |>
+    dplyr::pull(TIR)
 
   if (is.null(boot)) {
     return(list(est = TIR))
   } else {
+    unique_ids <- unique(data[[id_col]])
+    n_ids <- length(unique_ids)
     boot_TIR <- replicate(boot, {
-      boot_sample <- data |>
-        sample_frac(size = 1, replace = TRUE) |>
-        mutate(repeat_id_num = row_number())
-      boot_sample[[id_col]] <- paste0(boot_sample[[id_col]], "_", boot_sample$repeat_id_num)
-      naive_est(boot_sample, min_time, max_time, boot = NULL, id_col, time, value_in_range)$est
+      boot_id <- data.frame(ID = sample((unique_ids), n_ids, replace = T))
+      colnames(boot_id) <- id_col
+      boot_sample_temp <- boot_id |> dplyr::left_join(data, by = id_col, relationship = "many-to-many")
+      count_boot <- NULL
+      boot_sample <- boot_sample_temp |>
+        dplyr::group_by(.data[[id_col]], .data[[time]]) |>
+        dplyr::mutate(count_boot = dplyr::row_number()) |>
+        dplyr::ungroup() |>
+        dplyr::mutate(ID_boot = ifelse(count_boot > 1, paste0(.data[[id_col]], "BOOT", count_boot), .data[[id_col]])) |>
+        dplyr::select(-count_boot)
+      naive_est(boot_sample, min_time, max_time, boot = NULL, "ID_boot", time, value_in_range)$est
     })
     return(list(
       est = TIR,
@@ -48,20 +56,28 @@ naive_est <- function(data, min_time = 0, max_time = (1440 * 7 - 5), boot = NULL
 proposed_est_noninfo <- function(data, min_time = 0, max_time = (1440 * 7 - 5), boot = NULL, id_col = "patient_id", time = "time", value_in_range = "value_in_range") {
   data <- data[data[[time]] <= max_time & data[[time]] >= min_time, ]
   TIR <- data |>
-    group_by_at(time) |>
-    summarise(avg_val = mean(value_in_range, na.rm = TRUE)) |>
-    summarise(TIR = mean(avg_val)) |>
-    pull(TIR)
+    dplyr::group_by_at(time) |>
+    dplyr::summarise(avg_val = mean(value_in_range, na.rm = TRUE)) |>
+    dplyr::summarise(TIR = mean(avg_val)) |>
+    dplyr::pull(TIR)
 
   if (is.null(boot)) {
     return(list(est = TIR))
   } else {
+    unique_ids <- unique(data[[id_col]])
+    n_ids <- length(unique_ids)
     boot_TIR <- replicate(boot, {
-      boot_sample <- data |>
-        sample_frac(size = 1, replace = TRUE) |>
-        mutate(repeat_id_num = row_number())
-      boot_sample[[id_col]] <- paste0(boot_sample[[id_col]], "_", boot_sample$repeat_id_num)
-      proposed_est_noninfo(boot_sample, min_time, max_time, boot = NULL, id_col, time, value_in_range)$est
+      boot_id <- data.frame(ID = sample((unique_ids), n_ids, replace = T))
+      colnames(boot_id) <- id_col
+      boot_sample_temp <- boot_id |> dplyr::left_join(data, by = id_col, relationship = "many-to-many")
+      count_boot <- NULL
+      boot_sample <- boot_sample_temp |>
+        dplyr::group_by(.data[[id_col]], .data[[time]]) |>
+        dplyr::mutate(count_boot = dplyr::row_number()) |>
+        dplyr::ungroup() |>
+        dplyr::mutate(ID_boot = ifelse(count_boot > 1, paste0(.data[[id_col]], "BOOT", count_boot), .data[[id_col]])) |>
+        dplyr::select(-count_boot)
+      proposed_est_noninfo(boot_sample, min_time, max_time, boot = NULL, "ID_boot", time, value_in_range)$est
     })
     return(list(
       est = TIR,
@@ -93,20 +109,28 @@ proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_c
   # Calculate TIR
   data <- data[data[[start_col]] <= max_time & data[[start_col]] >= min_time, ]
   TIR <- data |>
-    group_by_at(start_col) |>
-    summarise(weighted_avg = weighted.mean(get(value_in_range), weight)) |>
-    summarise(TIR = mean(weighted_avg)) |>
-    pull(TIR)
+    dplyr::group_by_at(start_col) |>
+    dplyr::summarise(weighted_avg = weighted.mean(get(value_in_range), weight)) |>
+    dplyr::summarise(TIR = mean(weighted_avg)) |>
+    dplyr::pull(TIR)
 
   if (is.null(boot)) {
     return(list(est = TIR))
   } else {
+    unique_ids <- unique(data[[id_col]])
+    n_ids <- length(unique_ids)
     boot_TIR <- replicate(boot, {
-      boot_sample <- data |>
-        sample_frac(size = 1, replace = TRUE) |>
-        mutate(repeat_id_num = row_number())
-      boot_sample[[id_col]] <- paste0(boot_sample[[id_col]], "_", boot_sample$repeat_id_num)
-      proposed_est_cox(boot_sample, min_time, max_time, id_col, event_col, start_col, stop_col, formula, boot = NULL, value_in_range)$est
+      boot_id <- data.frame(ID = sample((unique_ids), n_ids, replace = T))
+      colnames(boot_id) <- id_col
+      boot_sample_temp <- boot_id |> dplyr::left_join(data, by = id_col, relationship = "many-to-many")
+      count_boot <- NULL
+      boot_sample <- boot_sample_temp |>
+        dplyr::group_by(.data[[id_col]], .data[[time]]) |>
+        dplyr::mutate(count_boot = dplyr::row_number()) |>
+        dplyr::ungroup() |>
+        dplyr::mutate(ID_boot = ifelse(count_boot > 1, paste0(.data[[id_col]], "BOOT", count_boot), .data[[id_col]])) |>
+        dplyr::select(-count_boot)
+      proposed_est_cox(boot_sample, min_time, max_time, "ID_boot", event_col, start_col, stop_col, formula, boot = NULL, value_in_range)$est
     })
     return(list(
       est = TIR,
