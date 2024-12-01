@@ -1,0 +1,160 @@
+#' @description
+#' Indicating whether a number is within the target range
+#' @noRd
+#'
+value_in_range <- function(x, range = c(-.Machine$integer.max, .Machine$integer.max)) {
+  if (range[1] <= x & x <= range[2]) {
+    return(1)
+  } else {
+    return(0)
+  }
+}
+
+#' @description
+#' The naive estimator for mean TIR
+#' @noRd
+#'
+naive_est <- function(data, min_time = 0, max_time = (1440 * 7 - 5), boot = NULL, id_col = "patient_id", time = "time", value_in_range = "value_in_range") {
+  data <- data[data[[time]] <= max_time & data[[time]] >= min_time, ]
+  TIR <- data|>
+    group_by_at(id_col) |>
+    summarise(TIR_i = mean(value_in_range, na.rm = TRUE)) |>
+    summarise(TIR = mean(TIR_i)) |>
+    pull(TIR)
+
+  if (is.null(boot)) {
+    return(list(est = TIR))
+  } else {
+    boot_TIR <- replicate(boot, {
+      boot_sample <- data |>
+        sample_frac(size = 1, replace = TRUE) |>
+        mutate(repeat_id_num = row_number())
+      boot_sample[[id_col]] <- paste0(boot_sample[[id_col]], "_", boot_sample$repeat_id_num)
+      naive_est(boot_sample, min_time, max_time, boot = NULL, id_col, time, value_in_range)$est
+    })
+    return(list(
+      est = TIR,
+      `std err` = sd(boot_TIR),
+      `0.025` = quantile(boot_TIR, 0.025),
+      `0.975` = quantile(boot_TIR, 0.975)
+    ))
+  }
+}
+
+#' @description
+#' The proposed estimator with noninformative follow-up duration assumption
+#' @noRd
+#'
+proposed_est_noninfo <- function(data, min_time = 0, max_time = (1440 * 7 - 5), boot = NULL, id_col = "patient_id", time = "time", value_in_range = "value_in_range") {
+  data <- data[data[[time]] <= max_time & data[[time]] >= min_time, ]
+  TIR <- data |>
+    group_by_at(time) |>
+    summarise(avg_val = mean(value_in_range, na.rm = TRUE)) |>
+    summarise(TIR = mean(avg_val)) |>
+    pull(TIR)
+
+  if (is.null(boot)) {
+    return(list(est = TIR))
+  } else {
+    boot_TIR <- replicate(boot, {
+      boot_sample <- data |>
+        sample_frac(size = 1, replace = TRUE) |>
+        mutate(repeat_id_num = row_number())
+      boot_sample[[id_col]] <- paste0(boot_sample[[id_col]], "_", boot_sample$repeat_id_num)
+      proposed_est_noninfo(boot_sample, min_time, max_time, boot = NULL, id_col, time, value_in_range)$est
+    })
+    return(list(
+      est = TIR,
+      `std err` = sd(boot_TIR),
+      `0.025` = quantile(boot_TIR, 0.025),
+      `0.975` = quantile(boot_TIR, 0.975)
+    ))
+  }
+}
+
+#' @description
+#' The proposed estimator with Cox model
+#' @noRd
+#'
+proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_col = "patient_id", event_col = "event", start_col = "time", stop_col = "time2", formula = "var1", boot = NULL, value_in_range = "value_in_range") {
+  data <- as.data.table(data)
+
+  # Fit Cox model
+  cox_fit <- coxph(as.formula(paste0("Surv(", start_col, ", ", stop_col, ", ", event_col, ") ~ ", formula)), data = data)
+  baseline_hazard <- basehaz(cox_fit, centered = FALSE)
+  data[, "predict_partial_hazard"] <- predict(cox_fit, newdata = data, type = "risk")
+
+  # Calculate weights
+  data <- merge(data, baseline_hazard, by.x = start_col, by.y = "time", all.x = TRUE)
+  data[, "lambda_exp_diff" := c(0, diff(hazard)) * predict_partial_hazard]
+  data[, "cum_lambda_exp_diff" := cumsum(lambda_exp_diff), by = id_col]
+  data[, "weight" := 1 / exp(-cum_lambda_exp_diff)]
+
+  # Calculate TIR
+  data <- data[data[[start_col]] <= max_time & data[[start_col]] >= min_time, ]
+  TIR <- data |>
+    group_by_at(start_col) |>
+    summarise(weighted_avg = weighted.mean(get(value_in_range), weight)) |>
+    summarise(TIR = mean(weighted_avg)) |>
+    pull(TIR)
+
+  if (is.null(boot)) {
+    return(list(est = TIR))
+  } else {
+    boot_TIR <- replicate(boot, {
+      boot_sample <- data |>
+        sample_frac(size = 1, replace = TRUE) |>
+        mutate(repeat_id_num = row_number())
+      boot_sample[[id_col]] <- paste0(boot_sample[[id_col]], "_", boot_sample$repeat_id_num)
+      proposed_est_cox(boot_sample, min_time, max_time, id_col, event_col, start_col, stop_col, formula, boot = NULL, value_in_range)$est
+    })
+    return(list(
+      est = TIR,
+      `std err` = sd(boot_TIR),
+      `0.025` = quantile(boot_TIR, 0.025),
+      `0.975` = quantile(boot_TIR, 0.975)
+    ))
+  }
+}
+
+#' @description
+#' Estimation of mean TIR
+#'
+estTIR <- function(data, method = "proposed", model = "NULL", time = c(0, 1440 * 7 - 5), range = c(70, 180), boot = NULL, id = "patient_id", glucose = "glucose", time_col = "time", period = 5, formula = "var1") {
+  data$value_in_range <- sapply(data[[glucose]], value_in_range, range = range)
+  data$event <- FALSE
+  data[which.max(data[[time_col]]), "event"] <- TRUE
+  data$time2 <- data[[time_col]] + period
+
+  if (method == "naive" && model == "NULL") {
+    return(naive_est(data, min_time = time[1], max_time = time[2], boot = boot, id_col = id, time = time_col, value_in_range = "value_in_range"))
+  } else if (method == "proposed" && model == "NULL") {
+    return(proposed_est_noninfo(data, min_time = time[1], max_time = time[2], boot = boot, id_col = id, time = time_col, value_in_range = "value_in_range"))
+  } else if (method == "proposed" && model == "cox") {
+    return(proposed_est_cox(data, min_time = time[1], max_time = time[2], id_col = id, event_col = "event", start_col = time_col, stop_col = "time2", formula = formula, boot = boot, value_in_range = "value_in_range"))
+  } else {
+    stop("Error: model not recognized")
+  }
+}
+
+#' @description
+#' Rounding number
+#' @noRd
+#'
+round_nested <- function(data, decimals = 3) {
+  if (is.list(data)) {
+    return(lapply(data, round_nested, decimals))
+  } else if (is.numeric(data)) {
+    return(round(data, decimals))
+  }
+  return(data)
+}
+
+#' @description
+#' Print results
+#' @noRd
+#'
+printTIR <- function(est, decimals = 3) {
+  DF <- data.frame(round_nested(est, decimals))
+  print(DF)
+}

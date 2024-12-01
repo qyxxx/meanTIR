@@ -1,0 +1,22 @@
+---
+title: "example"
+author: "Qi Yu"
+format: html
+---
+
+```{r}
+here::i_am('example.qmd')
+```
+```{r}
+# load dataSample
+data <- read.csv(file = '../data/dataSample.csv')
+```
+
+## debug
+```{r}
+estTIR(data, method = "naive", time = c(0, 4200), range = c(70, 180))
+```
+```{r}
+estTIR(data, method = "proposed", time = c(0, 4200), range = c(70, 180))
+```
+
