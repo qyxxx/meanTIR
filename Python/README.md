@@ -1,6 +1,6 @@
 # Calculating mean TIR based on CGM data
 
-A Python tool implementing the methods proposed in **Time-In-Range Analyses of Funcational Data Subject to Missing with Applications to Inpatient Continuous Glucose Monitoring**
+A Python tool implementing the methods proposed in **Time-In-Range Analyses of Functional Data Subject to Missing with Applications to Inpatient Continuous Glucose Monitoring**
 
 Please contact qi.yu2@emory.edu with any questions or comments.
 
