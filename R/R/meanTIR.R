@@ -43,8 +43,8 @@ naive_est <- function(data, min_time = 0, max_time = (1440 * 7 - 5), boot = NULL
     return(list(
       est = TIR,
       `std err` = sd(boot_TIR),
-      `0.025` = quantile(boot_TIR, 0.025),
-      `0.975` = quantile(boot_TIR, 0.975)
+      `CI 025` = quantile(boot_TIR, 0.025),
+      `CI 975` = quantile(boot_TIR, 0.975)
     ))
   }
 }
@@ -82,8 +82,8 @@ proposed_est_noninfo <- function(data, min_time = 0, max_time = (1440 * 7 - 5), 
     return(list(
       est = TIR,
       `std err` = sd(boot_TIR),
-      `0.025` = quantile(boot_TIR, 0.025),
-      `0.975` = quantile(boot_TIR, 0.975)
+      `CI 025` = quantile(boot_TIR, 0.025),
+      `CI 025` = quantile(boot_TIR, 0.975)
     ))
   }
 }
@@ -135,8 +135,8 @@ proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_c
     return(list(
       est = TIR,
       `std err` = sd(boot_TIR),
-      `0.025` = quantile(boot_TIR, 0.025),
-      `0.975` = quantile(boot_TIR, 0.975)
+      `CI 025` = quantile(boot_TIR, 0.025),
+      `CI 025` = quantile(boot_TIR, 0.975)
     ))
   }
 }
@@ -180,5 +180,6 @@ round_nested <- function(data, decimals = 3) {
 #'
 printTIR <- function(est, decimals = 3) {
   DF <- data.frame(round_nested(est, decimals))
+  rownames(DF) <- 'meanTIR'
   print(DF)
 }
