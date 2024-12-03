@@ -83,7 +83,7 @@ proposed_est_noninfo <- function(data, min_time = 0, max_time = (1440 * 7 - 5), 
       est = TIR,
       `std err` = sd(boot_TIR),
       `CI 025` = quantile(boot_TIR, 0.025),
-      `CI 025` = quantile(boot_TIR, 0.975)
+      `CI 975` = quantile(boot_TIR, 0.975)
     ))
   }
 }
@@ -142,7 +142,7 @@ proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_c
       est = TIR,
       `std err` = sd(boot_TIR),
       `CI 025` = quantile(boot_TIR, 0.025),
-      `CI 025` = quantile(boot_TIR, 0.975)
+      `CI 975` = quantile(boot_TIR, 0.975)
     ))
   }
 }
