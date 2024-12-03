@@ -4,6 +4,17 @@ An R package implementing the methods proposed in **Time-In-Range Analyses of Fu
 
 Please contact qi.yu2@emory.edu with any questions or comments.
 
+## Installation
+
+You can install the development version of meanTIR like so:
+
+``` r
+if (!require("pak", quietly = TRUE))
+    install.packages("pak")
+
+pak::pak("qyxxx/meanTIR/R")
+```
+
 ## Usage directions 
 
 Please check **example/example.qmd** for details on usage.
