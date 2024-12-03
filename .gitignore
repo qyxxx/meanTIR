@@ -1,4 +1,7 @@
 *.DS_Store
 Python/src/__pycache__/
-.Rproj.user
+R/.Rproj.user
 R/.Rhistory
+R/example/example.html
+meanTIR_0.1.0.tar.gz
+R/R/.Rhistory
