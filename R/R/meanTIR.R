@@ -93,24 +93,29 @@ proposed_est_noninfo <- function(data, min_time = 0, max_time = (1440 * 7 - 5), 
 #' @noRd
 #'
 proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_col = "patient_id", event_col = "event", start_col = "time", stop_col = "time2", formula = "var1", boot = NULL, value_in_range = "value_in_range") {
-  data <- as.data.table(data)
-
+  # data <- data.table::as.data.table(data)
   # Fit Cox model
-  cox_fit <- coxph(as.formula(paste0("Surv(", start_col, ", ", stop_col, ", ", event_col, ") ~ ", formula)), data = data)
-  baseline_hazard <- basehaz(cox_fit, centered = FALSE)
+  cox_fit <- survival::coxph(as.formula(paste0("survival::Surv(", start_col, ",", stop_col, ",", "event==1", ") ~ ", formula)), data = data, method="breslow")
+  # Baseline cumulative hazard
+  baseline_hazard <- survival::basehaz(cox_fit, centered = FALSE)
+  # Add time and hazard difference
+  baseline_hazard <- baseline_hazard |> dplyr::arrange(time) |> dplyr::mutate(hazard_diff = c(0, diff(hazard)))
+  # Predict partial hazard
   data[, "predict_partial_hazard"] <- predict(cox_fit, newdata = data, type = "risk")
-
-  # Calculate weights
+  # Merge cumulative hazard with dataset
   data <- merge(data, baseline_hazard, by.x = start_col, by.y = "time", all.x = TRUE)
-  data[, "lambda_exp_diff" := c(0, diff(hazard)) * predict_partial_hazard]
-  data[, "cum_lambda_exp_diff" := cumsum(lambda_exp_diff), by = id_col]
-  data[, "weight" := 1 / exp(-cum_lambda_exp_diff)]
+  data <- data |>
+    dplyr::mutate(across(everything(), ~ tidyr::replace_na(.x, 0)))
+  # Compute lambda_exp_diff
+  data <- data |> dplyr::mutate(lambda_exp_diff = predict_partial_hazard * hazard_diff)
+  data <- data |> dplyr::group_by(patient_id) |>
+    dplyr::mutate(cum_lambda_exp_diff = cumsum(lambda_exp_diff), weight = 1 / exp(-cum_lambda_exp_diff)) |> dplyr::ungroup()
 
   # Calculate TIR
   data <- data[data[[start_col]] <= max_time & data[[start_col]] >= min_time, ]
   TIR <- data |>
     dplyr::group_by_at(start_col) |>
-    dplyr::summarise(weighted_avg = weighted.mean(get(value_in_range), weight)) |>
+    dplyr::summarise(weighted_avg = weighted.mean(value_in_range, weight)) |>
     dplyr::summarise(TIR = mean(weighted_avg)) |>
     dplyr::pull(TIR)
 
@@ -125,12 +130,13 @@ proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_c
       boot_sample_temp <- boot_id |> dplyr::left_join(data, by = id_col, relationship = "many-to-many")
       count_boot <- NULL
       boot_sample <- boot_sample_temp |>
-        dplyr::group_by(.data[[id_col]], .data[[time]]) |>
+        dplyr::group_by(.data[[id_col]], .data[[start_col]]) |>
         dplyr::mutate(count_boot = dplyr::row_number()) |>
         dplyr::ungroup() |>
         dplyr::mutate(ID_boot = ifelse(count_boot > 1, paste0(.data[[id_col]], "BOOT", count_boot), .data[[id_col]])) |>
-        dplyr::select(-count_boot)
-      proposed_est_cox(boot_sample, min_time, max_time, "ID_boot", event_col, start_col, stop_col, formula, boot = NULL, value_in_range)$est
+        dplyr::select(-count_boot, -.data[[id_col]], -predict_partial_hazard, -hazard, -hazard_diff, -lambda_exp_diff) |>
+        dplyr::rename(patient_id = ID_boot)
+      proposed_est_cox(boot_sample, min_time, max_time, "patient_id", event_col, start_col, stop_col, formula, boot = NULL, value_in_range)$est
     })
     return(list(
       est = TIR,
@@ -143,11 +149,11 @@ proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5), id_c
 
 #' @description
 #' Estimation of mean TIR
+#' @export
 #'
 estTIR <- function(data, method = "proposed", model = "NULL", time = c(0, 1440 * 7 - 5), range = c(70, 180), boot = NULL, id = "patient_id", glucose = "glucose", time_col = "time", period = 5, formula = "var1") {
   data$value_in_range <- sapply(data[[glucose]], value_in_range, range = range)
-  data$event <- FALSE
-  data[which.max(data[[time_col]]), "event"] <- TRUE
+  data <- data |> dplyr::group_by(patient_id) |> dplyr::mutate(event = dplyr::if_else(time == max(time),1,0)) |> dplyr::ungroup()
   data$time2 <- data[[time_col]] + period
 
   if (method == "naive" && model == "NULL") {
@@ -177,6 +183,7 @@ round_nested <- function(data, decimals = 3) {
 #' @description
 #' Print results
 #' @noRd
+#' @export
 #'
 printTIR <- function(est, decimals = 3) {
   DF <- data.frame(round_nested(est, decimals))
