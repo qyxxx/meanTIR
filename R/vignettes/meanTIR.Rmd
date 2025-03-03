@@ -1,13 +1,17 @@
 ---
-title: "example"
-author: "Qi Yu"
-format: 
-  html:
-    self-contained: true
+title: "meanTIR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{meanTIR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-here::i_am('example.qmd')
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
 ```
 
 ## Load dataSample
@@ -74,3 +78,4 @@ The following code is used to calculate mean TIR by the proposed method under Co
 ```{r}
 print(estTIR(data, method = "proposed", model = "cox", formula = "x1+x2", time = c(0, 4200), range = c(70, 180), boot = 20))
 ```
+
