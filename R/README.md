@@ -9,15 +9,19 @@ Please contact qi.yu2@emory.edu with any questions or comments.
 You can install the development version of meanTIR like so:
 
 ``` r
-if (!require("pak", quietly = TRUE))
-    install.packages("pak")
+if (!require("devtools", quietly = TRUE))
+    install.packages("devtools")
 
-pak::pak("qyxxx/meanTIR/R")
+devtools::install_github("qyxxx/meanTIR/R", build_vignettes = TRUE)
 ```
 
 ## Usage directions 
 
-Please check **example/example.qmd** for details on usage.
+Please check vignette for details on usage by:
+
+``` r
+vignette("meanTIR", package = "meanTIR")
+```
 
 ## A Sample dataset
 Please check **dataSample.csv** in **data** folder for a simulated dataset perturbated from a real dataset.
