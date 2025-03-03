@@ -26,11 +26,7 @@ value_in_range <- function(x, range = c(-.Machine$integer.max, .Machine$integer.
 #' @param id_col Column name identifying subjects (default = "patient_id").
 #' @param time Column name representing time (default = "time").
 #' @param value_in_range Column name of the binary indicator (0/1) for time in range (default = "value_in_range").
-#' @return A list containing:
-#'   \item{est}{Estimated mean TIR.}
-#'   \item{std err}{Standard error of the estimate (if bootstrapping is enabled).}
-#'   \item{CI 025}{Lower bound of the 95% confidence interval (if bootstrapping is enabled).}
-#'   \item{CI 975}{Upper bound of the 95% confidence interval (if bootstrapping is enabled).}
+#' @return A list containing TIR estimation results, including the estimate, standard error, and confidence intervals.
 #' @noRd
 naive_est <- function(data,
                       min_time = 0, max_time = (1440 * 7 - 5),
@@ -87,11 +83,7 @@ naive_est <- function(data,
 #' @param id_col Column name identifying subjects (default = "patient_id").
 #' @param time Column name representing time (default = "time").
 #' @param value_in_range Column name of the binary indicator (0/1) for time in range (default = "value_in_range").
-#' @return A list containing:
-#'   \item{est}{Estimated mean TIR.}
-#'   \item{std err}{Standard error of the estimate (if bootstrapping is enabled).}
-#'   \item{CI 025}{Lower bound of the 95% confidence interval (if bootstrapping is enabled).}
-#'   \item{CI 975}{Upper bound of the 95% confidence interval (if bootstrapping is enabled).}
+#' @return A list containing TIR estimation results, including the estimate, standard error, and confidence intervals.
 #' @noRd
 proposed_est_noninfo <- function(data,
                                  min_time = 0, max_time = (1440 * 7 - 5),
@@ -147,11 +139,7 @@ proposed_est_noninfo <- function(data,
 #' @param formula Right-hand side of the Cox model formula as a character string (default = "var1").
 #' @param boot Number of bootstrap iterations (default = NULL, no bootstrapping).
 #' @param value_in_range Column name of the binary indicator (0/1) for time in range (default = "value_in_range").
-#' @return A list containing:
-#'   \item{est}{Estimated mean TIR.}
-#'   \item{std err}{Standard error of the estimate (if bootstrapping is enabled).}
-#'   \item{CI 025}{Lower bound of the 95% confidence interval (if bootstrapping is enabled).}
-#'   \item{CI 975}{Upper bound of the 95% confidence interval (if bootstrapping is enabled).}
+#' @return A list containing TIR estimation results, including the estimate, standard error, and confidence intervals.
 #' @noRd
 proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5),
                              id_col = "patient_id", event_col = "event",
@@ -213,9 +201,15 @@ proposed_est_cox <- function(data, min_time = 0, max_time = (1440 * 7 - 5),
 
 
 #' @description
-#' Rounding number
-#' @noRd
+#' Recursively rounds numeric values in nested lists, data frames, and tibbles.
 #'
+#' This function applies rounding to numeric values within a list, including nested structures.
+#' If the input is a numeric vector, it rounds it directly. Non-numeric values remain unchanged.
+#'
+#' @param data A list, data frame, tibble, or numeric vector to be rounded.
+#' @param decimals Number of decimal places to round to (default = 3).
+#' @return The input data with all numeric values rounded.
+#' @noRd
 round_nested <- function(data, decimals = 3) {
   if (is.list(data)) {
     return(lapply(data, round_nested, decimals))
@@ -225,13 +219,30 @@ round_nested <- function(data, decimals = 3) {
   return(data)
 }
 
+#' @title Print TIR Estimation Results
 #' @description
-#' Print results
-#' @noRd
-#' @export
+#' Prints Time in Range (TIR) estimation results, ensuring numeric values are rounded.
 #'
-printTIR <- function(est, decimals = 3) {
-  DF <- data.frame(round_nested(est, decimals))
-  rownames(DF) <- 'meanTIR'
-  print(DF)
+#' @param x An object of class "TIR" (a list containing estimation results).
+#' @param decimals Number of decimal places to round to (default = 3).
+#' @param ... Additional arguments (for compatibility with generic print method).
+#' @export
+#' @method print TIR
+print.TIR <- function(x, decimals = 3, ...) {
+  # Ensure x is of class "TIR"
+  if (!inherits(x, "TIR")) {
+    stop("Error: Object is not of class 'TIR'")
+  }
+
+  # Round numeric values within the list
+  rounded_x <- round_nested(x, decimals)
+
+  # Convert to data frame for better printing
+  DF <- as.data.frame(t(unlist(rounded_x)))  # Transpose for better display
+
+  # Set row name
+  rownames(DF) <- "meanTIR"
+
+  # Print formatted output
+  print(DF, row.names = TRUE)
 }

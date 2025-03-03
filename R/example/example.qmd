@@ -58,14 +58,14 @@ If 'boot' is not specified, *printTIR()* will only print mean TIR estimation.
 The following code is used to calculate mean TIR by the naive method with target glucose range 70-180mg/dL, time window 0-3 days (0-4200 minutes)，and 20 bootstrap replicates.
 
 ```{r}
-printTIR(estTIR(data, method = "naive", time = c(0, 4200), range = c(70, 180), boot = 20))
+print(estTIR(data, method = "naive", time = c(0, 4200), range = c(70, 180), boot = 20))
 ```
 ### Calculate mean TIR with the proposed method under non-informative follow-up duration
 
 The following code is used to calculate mean TIR by the proposed method under non-informative patient's follow-up duration assumption with glucose range 70-180mg/dL, time window 0-3 days (0-4200 minutes)，and 20 bootstrap replicates.
 
 ```{r}
-printTIR(estTIR(data, method = "proposed", time = c(0, 4200), range = c(70, 180), boot = 20))
+print(estTIR(data, method = "proposed", time = c(0, 4200), range = c(70, 180), boot = 20))
 ```
 
 ### Calculate mean TIR with the proposed method under Cox-model-based follow-up duration

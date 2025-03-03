@@ -1,3 +1,4 @@
+#' @title Estimate Time in Range (TIR)
 #' @description
 #' Estimates the mean Time in Range (TIR) using different methods.
 #'
@@ -15,11 +16,7 @@
 #' @param time_col Column name representing time (default: "time").
 #' @param period Additional time offset for stop time in Cox model (default: 5).
 #' @param formula A formula string for the Cox model (default: "var1").
-#' @return A list containing:
-#'   \item{est}{Estimated mean TIR.}
-#'   \item{std err}{Standard error (if bootstrapping is enabled).}
-#'   \item{CI 025}{Lower bound of the 95% confidence interval (if bootstrapping is enabled).}
-#'   \item{CI 975}{Upper bound of the 95% confidence interval (if bootstrapping is enabled).}
+#' @return A list containing TIR estimation results, including the estimate, standard error, and confidence intervals.
 #' @export
 estTIR <- function(data, method = "proposed", model = "NULL",
                    time = c(0, 1440 * 7 - 5), range = c(70, 180),
@@ -33,8 +30,10 @@ estTIR <- function(data, method = "proposed", model = "NULL",
   # Compute stop time for Cox model
   data$time2 <- data[[time_col]] + period
 
+  # Initialize `est` variable before assignment
+  est <- NULL
   # Use switch() for cleaner method selection
-  switch(method,
+  est <- switch(method,
          "naive" = {
            if (model == "NULL") {
              naive_est(data, min_time = time[1], max_time = time[2],
@@ -58,4 +57,10 @@ estTIR <- function(data, method = "proposed", model = "NULL",
          stop("Error: Method not recognized")
   )
 
+  # Ensure `est` is not NULL before assigning the class
+  if (is.null(est)) stop("Error: Estimation method failed to return a result")
+
+  # Assign "TIR" class to result
+  class(est) <- "TIR"
+  return(est)
 }
