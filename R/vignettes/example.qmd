@@ -1,9 +1,10 @@
 ---
-title: "meanTIR"
+title: "Example Vignette"
+author: "Qi Yu"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{meanTIR}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Example Vignette}
+  %\VignetteEngine{quarto::quarto}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -14,22 +15,22 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Load dataSample
+
+## Load meanTIR_data
 
 An input dataset for *estTIR* is a dataframe containing time to each CGM readings along with time-dependent or time-independent covariates of interest. The input dataset should take long format, where
 each row contains the information in one time interval in which a CGM is observed. As such, multiple rows in the dataset may correspond to one subject. 
 
-*dataSample* is a simulated dataset perturbated from a real dataset. *dataSample* contains 50 subjects. For each subject, *dataSample* contains values for the following eight variables: *patient_id*, which is the unique identifier for each subject; *glucose*, which is the CGM reading; *time*, which records the time in minutes reading CGM; x1, which is a binary covariate; x2, which is a continuous covariate.
+*meanTIR_data* is a simulated dataset perturbated from a real dataset. *meanTIR_data* contains 50 subjects. For each subject, *meanTIR_data* contains values for the following eight variables: *patient_id*, which is the unique identifier for each subject; *glucose*, which is the CGM reading; *time*, which records the time in minutes reading CGM; x1, which is a binary covariate; x2, which is a continuous covariate.
 
 Note: The Naïve estimator and the proposed estimator with non-informative follow-up duration require a minimum dataset including *patient_id*, *glucose*, and *time*. For the proposed estimator with informative follow-up duration, at least one additional covariate is necessary.
 
 ```{r}
-# load dataSample
-data <- read.csv(file = '../data/dataSample.csv')
+library(meanTIR)
 ```
 
 ```{r}
-library(meanTIR)
+data(meanTIR)
 ```
 
 
@@ -49,33 +50,32 @@ Function *estTIR()* in our package is the main function to calculate mean TIR. I
 - glucose: Indicating the column name of CGM readings. The default is 'glucose'.
 - period: Indicating the period of reading CGM. The default is 5 (minutes).
 
-Function *printTIR()* summary the results returned by *estTIR()*. If 'boot' is specified in *estTIR()*, *printTIR()* shows:
+Function *print()* summary the results returned by *estTIR()*. If 'boot' is specified in *estTIR()*, *print()* shows:
 
 - est: mean TIR estimation from the given dataset.
 - std err: standard error for mean TIR.
 - CI.025 CI.975: $95\%$ confidence interval of mean TIR estimation.
 
-If 'boot' is not specified, *printTIR()* will only print mean TIR estimation.
+If 'boot' is not specified, *print()* will only print mean TIR estimation.
 
 ### Calculating mean TIR with naive method. 
 
 The following code is used to calculate mean TIR by the naive method with target glucose range 70-180mg/dL, time window 0-3 days (0-4200 minutes)，and 20 bootstrap replicates.
 
 ```{r}
-print(estTIR(data, method = "naive", time = c(0, 4200), range = c(70, 180), boot = 20))
+print(estTIR(meanTIR_data, method = "naive", time = c(0, 4200), range = c(70, 180), boot = 20))
 ```
 ### Calculate mean TIR with the proposed method under non-informative follow-up duration
 
 The following code is used to calculate mean TIR by the proposed method under non-informative patient's follow-up duration assumption with glucose range 70-180mg/dL, time window 0-3 days (0-4200 minutes)，and 20 bootstrap replicates.
 
 ```{r}
-print(estTIR(data, method = "proposed", time = c(0, 4200), range = c(70, 180), boot = 20))
+print(estTIR(meanTIR_data, method = "proposed", time = c(0, 4200), range = c(70, 180), boot = 20))
 ```
 
 ### Calculate mean TIR with the proposed method under Cox-model-based follow-up duration
 The following code is used to calculate mean TIR by the proposed method under Cox-model-based follow-up duration with glucose range 70-180mg/dL, time window 0-3 days (0-4200 minutes)，20 bootstrap replicates, and covariates "x1" and "x2" with formula "x1+x2".
 
 ```{r}
-print(estTIR(data, method = "proposed", model = "cox", formula = "x1+x2", time = c(0, 4200), range = c(70, 180), boot = 20))
+print(estTIR(meanTIR_data, method = "proposed", model = "cox", formula = "x1+x2", time = c(0, 4200), range = c(70, 180), boot = 20))
 ```
-
