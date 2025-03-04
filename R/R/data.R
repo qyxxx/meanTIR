@@ -1,0 +1,9 @@
+#' @title Simulated dataset for demonstration
+#' @description A simulated dataset perturbated from a real dataset. meanTIR contains 50 subjects. For each subject, meanTIR contains values for the following eight variables: patient_id, which is the unique identifier for each subject; glucose, which is the CGM reading; time, which records the time in minutes reading CGM; x1, which is a binary covariate; x2, which is a continuous covariate.
+#' @format A long-format dataframe.
+#'
+#' @usage data(meanTIR)
+#' @docType data
+#' @name meanTIR
+#' @rdname meanTIR
+NULL
