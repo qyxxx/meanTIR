@@ -1,10 +1,9 @@
 ---
-title: "Example Vignette"
-author: "Qi Yu"
+title: "meanTIR"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Example Vignette}
-  %\VignetteEngine{quarto::quarto}
+  %\VignetteIndexEntry{meanTIR}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -14,7 +13,6 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
-
 
 ## Load meanTIR_data
 
