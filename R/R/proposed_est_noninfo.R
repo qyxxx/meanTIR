@@ -1,7 +1,5 @@
+#' @title Computes the proposed estimator for mean Time in Range (TIR) under the assumption of noninformative follow-up duration.
 #' @description
-#' Computes the proposed estimator for mean Time in Range (TIR) under the
-#' assumption of noninformative follow-up duration.
-#'
 #' This function estimates the mean TIR using a time-stratified averaging
 #' approach. If bootstrapping is enabled, it computes confidence intervals
 #' using resampling.

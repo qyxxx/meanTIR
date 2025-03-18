@@ -1,6 +1,5 @@
+#' @title Computes the proposed estimator for mean Time in Range (TIR) using a Cox model.
 #' @description
-#' Computes the proposed estimator for mean Time in Range (TIR) using a Cox model.
-#'
 #' This function estimates TIR using a Cox proportional hazards model, weighting observations
 #' based on their predicted survival. If bootstrapping is enabled, confidence intervals are computed.
 #'

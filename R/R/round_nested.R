@@ -1,6 +1,5 @@
+#' @title Recursively rounds numeric values in nested lists, data frames, and tibbles.
 #' @description
-#' Recursively rounds numeric values in nested lists, data frames, and tibbles.
-#'
 #' This function applies rounding to numeric values within a list, including nested structures.
 #' If the input is a numeric vector, it rounds it directly. Non-numeric values remain unchanged.
 #'

@@ -1,3 +1,4 @@
+#' @title Check if a number is within the specified range.
 #' @description
 #' Check if a number is within the specified range.
 #' @param x A numeric value to check.

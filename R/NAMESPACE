@@ -2,3 +2,8 @@
 
 S3method(print,TIR)
 export(estTIR)
+export(naive_est)
+export(proposed_est_cox)
+export(proposed_est_noninfo)
+export(round_nested)
+export(value_in_range)

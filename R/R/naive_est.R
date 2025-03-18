@@ -1,6 +1,5 @@
+#' @title Computes the naive estimator for mean Time in Range (TIR).
 #' @description
-#' Computes the naive estimator for mean Time in Range (TIR).
-#'
 #' This function estimates the mean TIR for a given dataset, filtering based on a
 #' specified time window. If bootstrapping is enabled, it computes confidence
 #' intervals using resampling.
