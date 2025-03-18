@@ -31,6 +31,10 @@ library(meanTIR)
 data(meanTIR)
 ```
 
+```{r}
+head(meanTIR_data)
+```
+
 
 ## Main function for calculating mean TIR
 
